@@ -1,478 +1,402 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 
 interface Character {
   id: string;
   name: string;
   description: string;
-  emoji: string;
+  personality: string;
+  avatar: string;
 }
 
-interface GameChoice {
-  text: string;
-  nextScene: string;
-}
-
-interface GameScene {
+interface World {
   id: string;
+  name: string;
+  description: string;
+  genre: string;
+}
+
+interface Message {
+  id: string;
+  sender: 'user' | 'character';
   text: string;
-  choices: GameChoice[];
+  characterName?: string;
 }
 
-interface GameProgress {
-  currentScene: string;
-  characters: Character[];
-  history: string[];
-}
-
-const Index = () => {
-  const [currentTab, setCurrentTab] = useState('home');
+export default function Index() {
+  const [worlds, setWorlds] = useState<World[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', emoji: '🚀' });
-  const [gameProgress, setGameProgress] = useState<GameProgress>({
-    currentScene: 'start',
-    characters: [],
-    history: []
-  });
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentMessage, setCurrentMessage] = useState('');
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
 
-  const gameScenes: Record<string, GameScene> = {
-    start: {
-      id: 'start',
-      text: 'Вы просыпаетесь на космической станции. Системы жизнеобеспечения работают нестабильно. Что будете делать?',
-      choices: [
-        { text: 'Проверить систему навигации', nextScene: 'navigation' },
-        { text: 'Исследовать грузовой отсек', nextScene: 'cargo' },
-        { text: 'Связаться с базой', nextScene: 'communication' }
-      ]
-    },
-    navigation: {
-      id: 'navigation',
-      text: 'Навигационная система показывает странные аномалии в близлежащем секторе. Датчики фиксируют неизвестный объект.',
-      choices: [
-        { text: 'Приблизиться к объекту', nextScene: 'approach' },
-        { text: 'Вернуться к станции', nextScene: 'start' }
-      ]
-    },
-    cargo: {
-      id: 'cargo',
-      text: 'В грузовом отсеке вы находите контейнер с неизвестной технологией. Он излучает слабое свечение.',
-      choices: [
-        { text: 'Открыть контейнер', nextScene: 'container' },
-        { text: 'Вернуться к станции', nextScene: 'start' }
-      ]
-    },
-    communication: {
-      id: 'communication',
-      text: 'Связь с базой прерывается помехами. Вы слышите фрагменты сообщения о эвакуации.',
-      choices: [
-        { text: 'Попытаться усилить сигнал', nextScene: 'signal' },
-        { text: 'Вернуться к станции', nextScene: 'start' }
-      ]
-    },
-    approach: {
-      id: 'approach',
-      text: 'Приближаясь к объекту, вы понимаете, что это древний корабль неизвестной цивилизации...',
-      choices: [
-        { text: 'Начать заново', nextScene: 'start' }
-      ]
-    },
-    container: {
-      id: 'container',
-      text: 'Открыв контейнер, вы обнаруживаете голографическую карту звездных систем...',
-      choices: [
-        { text: 'Начать заново', nextScene: 'start' }
-      ]
-    },
-    signal: {
-      id: 'signal',
-      text: 'Усилив сигнал, вы получаете координаты спасательной капсулы...',
-      choices: [
-        { text: 'Начать заново', nextScene: 'start' }
-      ]
+  const [newWorld, setNewWorld] = useState({ name: '', description: '', genre: '' });
+  const [newCharacter, setNewCharacter] = useState({ name: '', description: '', personality: '' });
+
+  const createWorld = () => {
+    if (newWorld.name && newWorld.description) {
+      const world: World = {
+        id: Date.now().toString(),
+        ...newWorld
+      };
+      setWorlds([...worlds, world]);
+      setNewWorld({ name: '', description: '', genre: '' });
     }
   };
 
-  useEffect(() => {
-    const savedProgress = localStorage.getItem('gameProgress');
-    if (savedProgress) {
-      setGameProgress(JSON.parse(savedProgress));
-    }
-
-    const savedCharacters = localStorage.getItem('characters');
-    if (savedCharacters) {
-      setCharacters(JSON.parse(savedCharacters));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('gameProgress', JSON.stringify(gameProgress));
-  }, [gameProgress]);
-
-  useEffect(() => {
-    localStorage.setItem('characters', JSON.stringify(characters));
-  }, [characters]);
-
-  const handleChoice = (nextScene: string) => {
-    const currentSceneData = gameScenes[gameProgress.currentScene];
-    setGameProgress({
-      ...gameProgress,
-      currentScene: nextScene,
-      history: [...gameProgress.history, currentSceneData.text]
-    });
-  };
-
-  const addCharacter = () => {
+  const createCharacter = () => {
     if (newCharacter.name && newCharacter.description) {
       const character: Character = {
         id: Date.now().toString(),
-        ...newCharacter
+        ...newCharacter,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newCharacter.name}`
       };
       setCharacters([...characters, character]);
-      setNewCharacter({ name: '', description: '', emoji: '🚀' });
+      setNewCharacter({ name: '', description: '', personality: '' });
     }
   };
 
-  const deleteCharacter = (id: string) => {
-    setCharacters(characters.filter(c => c.id !== id));
+  const sendMessage = () => {
+    if (!currentMessage.trim() || !selectedCharacter) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'user',
+      text: currentMessage
+    };
+
+    setMessages([...messages, userMessage]);
+
+    setTimeout(() => {
+      const characterResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'character',
+        characterName: selectedCharacter.name,
+        text: generateResponse(currentMessage, selectedCharacter)
+      };
+      setMessages(prev => [...prev, characterResponse]);
+    }, 1000);
+
+    setCurrentMessage('');
   };
 
-  const resetGame = () => {
-    setGameProgress({
-      currentScene: 'start',
-      characters: [],
-      history: []
-    });
+  const generateResponse = (userMessage: string, character: Character) => {
+    const responses = [
+      `Интересно! Расскажи мне больше об этом.`,
+      `Я ${character.personality}. Что ты думаешь об этом?`,
+      `Понимаю тебя. ${character.description}`,
+      `Это напоминает мне о том времени, когда...`,
+      `Хм, давай подумаем об этом вместе.`,
+      `А что если мы попробуем по-другому?`,
+      `Мне нравится твой подход к этому!`
+    ];
+    return responses[Math.floor(Math.random() * responses.length)];
   };
-
-  const currentScene = gameScenes[gameProgress.currentScene];
 
   return (
-    <div className="min-h-screen bg-stars">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-12 animate-fade-in">
-          <h1 className="text-5xl font-bold text-glow mb-4 font-futura">
-            SCI-FI STORIES
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white p-4">
+      <div className="max-w-7xl mx-auto">
+        <header className="text-center py-8">
+          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+            Story Forge
           </h1>
-          <p className="text-xl text-scifi-cyan">Создавай свои космические приключения</p>
+          <p className="text-xl text-purple-200">Создай свою историю, персонажей и мир</p>
         </header>
 
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="animate-scale-in">
-          <TabsList className="grid w-full grid-cols-4 mb-8 bg-card/50 backdrop-blur-lg">
-            <TabsTrigger value="home" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Icon name="Home" className="mr-2" size={18} />
-              Главная
+        <Tabs defaultValue="chat" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 bg-purple-800/50">
+            <TabsTrigger value="chat">
+              <Icon name="MessageCircle" className="mr-2" size={18} />
+              Чат
             </TabsTrigger>
-            <TabsTrigger value="characters" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <TabsTrigger value="characters">
               <Icon name="Users" className="mr-2" size={18} />
               Персонажи
             </TabsTrigger>
-            <TabsTrigger value="game" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Icon name="Gamepad2" className="mr-2" size={18} />
-              Игра
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Icon name="User" className="mr-2" size={18} />
-              Профиль
+            <TabsTrigger value="worlds">
+              <Icon name="Globe" className="mr-2" size={18} />
+              Миры
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="home" className="animate-fade-in">
-            <Card className="bg-card/80 backdrop-blur-lg border-scifi-cyan/30">
-              <CardContent className="pt-6">
-                <div className="space-y-6">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4 animate-float">🚀</div>
-                    <h2 className="text-3xl font-bold mb-4">Добро пожаловать в мир будущего</h2>
-                    <p className="text-lg text-muted-foreground mb-6">
-                      Создавайте уникальных персонажей и проживайте захватывающие космические истории
-                    </p>
-                  </div>
+          <TabsContent value="chat" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="md:col-span-1 bg-purple-800/30 border-purple-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Персонажи</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[500px]">
+                    {characters.length === 0 ? (
+                      <p className="text-purple-300 text-sm">Создайте персонажей во вкладке "Персонажи"</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {characters.map(char => (
+                          <Button
+                            key={char.id}
+                            variant={selectedCharacter?.id === char.id ? "default" : "outline"}
+                            className="w-full justify-start"
+                            onClick={() => setSelectedCharacter(char)}
+                          >
+                            <Avatar className="mr-2 h-8 w-8">
+                              <AvatarImage src={char.avatar} />
+                              <AvatarFallback>{char.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{char.name}</span>
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
 
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <Card className="bg-muted/50 hover:bg-muted/70 transition-all hover:scale-105">
-                      <CardContent className="pt-6 text-center">
-                        <Icon name="Users" size={48} className="mx-auto mb-4 text-scifi-cyan" />
-                        <h3 className="font-bold text-lg mb-2">Создавай персонажей</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Разработай уникальных героев для своих историй
-                        </p>
-                      </CardContent>
-                    </Card>
+              <Card className="md:col-span-3 bg-purple-800/30 border-purple-600">
+                <CardHeader>
+                  <CardTitle className="text-white">
+                    {selectedCharacter ? `Чат с ${selectedCharacter.name}` : 'Выберите персонажа'}
+                  </CardTitle>
+                  {selectedCharacter && (
+                    <CardDescription className="text-purple-200">
+                      {selectedCharacter.description}
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px] mb-4 p-4 bg-purple-900/30 rounded-lg">
+                    {messages.length === 0 ? (
+                      <div className="text-center text-purple-300 py-8">
+                        <Icon name="MessagesSquare" size={48} className="mx-auto mb-4 opacity-50" />
+                        <p>Начните разговор с персонажем!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {messages.map(msg => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[70%] p-3 rounded-lg ${
+                                msg.sender === 'user'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-purple-700 text-white'
+                              }`}
+                            >
+                              {msg.sender === 'character' && (
+                                <p className="font-semibold text-sm mb-1">{msg.characterName}</p>
+                              )}
+                              <p>{msg.text}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
 
-                    <Card className="bg-muted/50 hover:bg-muted/70 transition-all hover:scale-105">
-                      <CardContent className="pt-6 text-center">
-                        <Icon name="BookOpen" size={48} className="mx-auto mb-4 text-scifi-cyan" />
-                        <h3 className="font-bold text-lg mb-2">Пиши истории</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Создавай увлекательные сюжеты и переплетения
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-muted/50 hover:bg-muted/70 transition-all hover:scale-105">
-                      <CardContent className="pt-6 text-center">
-                        <Icon name="Save" size={48} className="mx-auto mb-4 text-scifi-cyan" />
-                        <h3 className="font-bold text-lg mb-2">Сохраняй прогресс</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Все твои достижения надежно хранятся
-                        </p>
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  <div className="text-center">
-                    <Button 
-                      onClick={() => setCurrentTab('game')}
-                      size="lg"
-                      className="bg-scifi-cyan hover:bg-scifi-cyan/80 text-scifi-navy font-bold animate-glow-pulse"
-                    >
-                      <Icon name="Play" className="mr-2" size={20} />
-                      Начать приключение
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="characters" className="animate-fade-in">
-            <Card className="bg-card/80 backdrop-blur-lg border-scifi-cyan/30 mb-6">
-              <CardContent className="pt-6">
-                <h2 className="text-2xl font-bold mb-4 flex items-center">
-                  <Icon name="UserPlus" className="mr-2" />
-                  Создать персонажа
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Эмодзи</label>
-                    <Input
-                      placeholder="🚀"
-                      value={newCharacter.emoji}
-                      onChange={(e) => setNewCharacter({ ...newCharacter, emoji: e.target.value })}
-                      className="bg-muted/50 border-scifi-cyan/30 text-2xl text-center max-w-24"
-                      maxLength={2}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Имя персонажа</label>
-                    <Input
-                      placeholder="Капитан Нова"
-                      value={newCharacter.name}
-                      onChange={(e) => setNewCharacter({ ...newCharacter, name: e.target.value })}
-                      className="bg-muted/50 border-scifi-cyan/30"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Описание</label>
-                    <Textarea
-                      placeholder="Бесстрашный исследователь космоса..."
-                      value={newCharacter.description}
-                      onChange={(e) => setNewCharacter({ ...newCharacter, description: e.target.value })}
-                      className="bg-muted/50 border-scifi-cyan/30 min-h-24"
-                    />
-                  </div>
-                  <Button 
-                    onClick={addCharacter}
-                    className="w-full bg-scifi-cyan hover:bg-scifi-cyan/80 text-scifi-navy font-bold"
-                  >
-                    <Icon name="Plus" className="mr-2" />
-                    Добавить персонажа
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {characters.map((character) => (
-                <Card key={character.id} className="bg-card/80 backdrop-blur-lg border-scifi-cyan/30 hover:scale-105 transition-all">
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <Avatar className="h-16 w-16 text-3xl bg-scifi-cyan/20">
-                        <AvatarFallback>{character.emoji}</AvatarFallback>
-                      </Avatar>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => deleteCharacter(character.id)}
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Icon name="Trash2" size={18} />
+                  {selectedCharacter && (
+                    <div className="flex gap-2">
+                      <Input
+                        value={currentMessage}
+                        onChange={(e) => setCurrentMessage(e.target.value)}
+                        placeholder="Напишите сообщение..."
+                        className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300"
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                      />
+                      <Button onClick={sendMessage} className="bg-gradient-to-r from-pink-600 to-purple-600">
+                        <Icon name="Send" size={18} />
                       </Button>
                     </div>
-                    <h3 className="font-bold text-lg mb-2">{character.name}</h3>
-                    <p className="text-sm text-muted-foreground">{character.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {characters.length === 0 && (
-                <Card className="bg-card/50 backdrop-blur-lg border-dashed border-2 col-span-full">
-                  <CardContent className="pt-6 text-center py-12">
-                    <Icon name="Users" size={48} className="mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">Пока нет персонажей. Создайте первого!</p>
-                  </CardContent>
-                </Card>
-              )}
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
-          <TabsContent value="game" className="animate-fade-in">
-            <Card className="bg-card/80 backdrop-blur-lg border-scifi-cyan/30">
-              <CardContent className="pt-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold flex items-center">
-                    <Icon name="Gamepad2" className="mr-2" />
-                    Космическое приключение
-                  </h2>
-                  <Button
-                    variant="outline"
-                    onClick={resetGame}
-                    className="border-scifi-cyan/30 hover:bg-scifi-cyan/10"
-                  >
-                    <Icon name="RotateCcw" className="mr-2" size={18} />
-                    Начать заново
-                  </Button>
-                </div>
-
-                <div className="space-y-6">
-                  <Card className="bg-muted/30 border-scifi-cyan/20">
-                    <CardContent className="pt-6">
-                      <div className="flex items-start space-x-4">
-                        <div className="text-4xl">🌌</div>
-                        <div className="flex-1">
-                          <p className="text-lg leading-relaxed">{currentScene.text}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-3">
-                    {currentScene.choices.map((choice, index) => (
-                      <Button
-                        key={index}
-                        onClick={() => handleChoice(choice.nextScene)}
-                        className="w-full justify-start text-left h-auto py-4 px-6 bg-card hover:bg-scifi-cyan/20 border border-scifi-cyan/30 transition-all hover:scale-105"
-                        variant="outline"
-                      >
-                        <Icon name="ChevronRight" className="mr-3 shrink-0" />
-                        <span className="text-base">{choice.text}</span>
-                      </Button>
-                    ))}
+          <TabsContent value="characters" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-purple-800/30 border-purple-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Создать персонажа</CardTitle>
+                  <CardDescription className="text-purple-200">
+                    Придумайте уникального персонажа для своей истории
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="char-name" className="text-white">Имя</Label>
+                    <Input
+                      id="char-name"
+                      value={newCharacter.name}
+                      onChange={(e) => setNewCharacter({ ...newCharacter, name: e.target.value })}
+                      placeholder="Введите имя персонажа"
+                      className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300"
+                    />
                   </div>
+                  <div>
+                    <Label htmlFor="char-desc" className="text-white">Описание</Label>
+                    <Textarea
+                      id="char-desc"
+                      value={newCharacter.description}
+                      onChange={(e) => setNewCharacter({ ...newCharacter, description: e.target.value })}
+                      placeholder="Опишите внешность и историю персонажа"
+                      className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="char-personality" className="text-white">Характер</Label>
+                    <Input
+                      id="char-personality"
+                      value={newCharacter.personality}
+                      onChange={(e) => setNewCharacter({ ...newCharacter, personality: e.target.value })}
+                      placeholder="Храбрый, умный, веселый..."
+                      className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300"
+                    />
+                  </div>
+                  <Button onClick={createCharacter} className="w-full bg-gradient-to-r from-pink-600 to-purple-600">
+                    <Icon name="Plus" className="mr-2" size={18} />
+                    Создать персонажа
+                  </Button>
+                </CardContent>
+              </Card>
 
-                  {gameProgress.history.length > 0 && (
-                    <Card className="bg-muted/20 border-scifi-cyan/20">
-                      <CardContent className="pt-6">
-                        <h3 className="font-bold mb-4 flex items-center">
-                          <Icon name="History" className="mr-2" />
-                          История выборов
-                        </h3>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {gameProgress.history.slice(-3).map((text, index) => (
-                            <p key={index} className="text-sm text-muted-foreground border-l-2 border-scifi-cyan/50 pl-3">
-                              {text}
-                            </p>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              <Card className="bg-purple-800/30 border-purple-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Мои персонажи ({characters.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[500px]">
+                    {characters.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Icon name="UserPlus" size={64} className="mx-auto mb-4 text-purple-400 opacity-50" />
+                        <p className="text-purple-300">Пока нет персонажей</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {characters.map(char => (
+                          <Card key={char.id} className="bg-purple-900/50 border-purple-700">
+                            <CardHeader>
+                              <div className="flex items-center gap-3">
+                                <Avatar>
+                                  <AvatarImage src={char.avatar} />
+                                  <AvatarFallback>{char.name[0]}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <CardTitle className="text-white text-lg">{char.name}</CardTitle>
+                                  <CardDescription className="text-purple-300 text-sm">
+                                    {char.personality}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-purple-200 text-sm">{char.description}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="profile" className="animate-fade-in">
-            <Card className="bg-card/80 backdrop-blur-lg border-scifi-cyan/30">
-              <CardContent className="pt-6">
-                <div className="text-center space-y-6">
+          <TabsContent value="worlds" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="bg-purple-800/30 border-purple-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Создать мир</CardTitle>
+                  <CardDescription className="text-purple-200">
+                    Создайте уникальный мир для вашей истории
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div>
-                    <Avatar className="h-32 w-32 mx-auto mb-4 bg-scifi-cyan/20 text-6xl">
-                      <AvatarFallback>👨‍🚀</AvatarFallback>
-                    </Avatar>
-                    <h2 className="text-3xl font-bold mb-2">Космический исследователь</h2>
-                    <Badge variant="secondary" className="bg-scifi-cyan/20 text-scifi-cyan">
-                      Активный игрок
-                    </Badge>
+                    <Label htmlFor="world-name" className="text-white">Название мира</Label>
+                    <Input
+                      id="world-name"
+                      value={newWorld.name}
+                      onChange={(e) => setNewWorld({ ...newWorld, name: e.target.value })}
+                      placeholder="Название вашего мира"
+                      className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300"
+                    />
                   </div>
-
-                  <div className="grid md:grid-cols-3 gap-4">
-                    <Card className="bg-muted/30">
-                      <CardContent className="pt-6 text-center">
-                        <div className="text-4xl font-bold text-scifi-cyan mb-2">
-                          {characters.length}
-                        </div>
-                        <p className="text-sm text-muted-foreground">Персонажей создано</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-muted/30">
-                      <CardContent className="pt-6 text-center">
-                        <div className="text-4xl font-bold text-scifi-cyan mb-2">
-                          {gameProgress.history.length}
-                        </div>
-                        <p className="text-sm text-muted-foreground">Решений принято</p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-muted/30">
-                      <CardContent className="pt-6 text-center">
-                        <div className="text-4xl font-bold text-scifi-cyan mb-2">
-                          1
-                        </div>
-                        <p className="text-sm text-muted-foreground">Историй начато</p>
-                      </CardContent>
-                    </Card>
+                  <div>
+                    <Label htmlFor="world-genre" className="text-white">Жанр</Label>
+                    <Input
+                      id="world-genre"
+                      value={newWorld.genre}
+                      onChange={(e) => setNewWorld({ ...newWorld, genre: e.target.value })}
+                      placeholder="Фэнтези, Sci-Fi, Пост-апокалипсис..."
+                      className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300"
+                    />
                   </div>
+                  <div>
+                    <Label htmlFor="world-desc" className="text-white">Описание</Label>
+                    <Textarea
+                      id="world-desc"
+                      value={newWorld.description}
+                      onChange={(e) => setNewWorld({ ...newWorld, description: e.target.value })}
+                      placeholder="Опишите ваш мир: какие события там происходят, какая атмосфера, кто населяет этот мир..."
+                      className="bg-purple-900/50 border-purple-600 text-white placeholder:text-purple-300 min-h-[120px]"
+                    />
+                  </div>
+                  <Button onClick={createWorld} className="w-full bg-gradient-to-r from-pink-600 to-purple-600">
+                    <Icon name="Globe" className="mr-2" size={18} />
+                    Создать мир
+                  </Button>
+                </CardContent>
+              </Card>
 
-                  <Card className="bg-muted/20">
-                    <CardContent className="pt-6">
-                      <h3 className="font-bold mb-4 flex items-center justify-center">
-                        <Icon name="Trophy" className="mr-2" />
-                        Достижения
-                      </h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-2xl">🌟</span>
-                            <div className="text-left">
-                              <p className="font-medium">Первый шаг</p>
-                              <p className="text-xs text-muted-foreground">Начать первое приключение</p>
-                            </div>
-                          </div>
-                          <Badge variant="secondary" className="bg-scifi-cyan/20">Получено</Badge>
-                        </div>
-
-                        {characters.length > 0 && (
-                          <div className="flex items-center justify-between p-3 bg-card/50 rounded-lg">
-                            <div className="flex items-center space-x-3">
-                              <span className="text-2xl">👤</span>
-                              <div className="text-left">
-                                <p className="font-medium">Создатель</p>
-                                <p className="text-xs text-muted-foreground">Создать первого персонажа</p>
-                              </div>
-                            </div>
-                            <Badge variant="secondary" className="bg-scifi-cyan/20">Получено</Badge>
-                          </div>
-                        )}
+              <Card className="bg-purple-800/30 border-purple-600">
+                <CardHeader>
+                  <CardTitle className="text-white">Мои миры ({worlds.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[500px]">
+                    {worlds.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Icon name="Sparkles" size={64} className="mx-auto mb-4 text-purple-400 opacity-50" />
+                        <p className="text-purple-300">Создайте свой первый мир</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            </Card>
+                    ) : (
+                      <div className="space-y-4">
+                        {worlds.map(world => (
+                          <Card key={world.id} className="bg-purple-900/50 border-purple-700">
+                            <CardHeader>
+                              <CardTitle className="text-white flex items-center gap-2">
+                                <Icon name="Globe" size={20} className="text-purple-400" />
+                                {world.name}
+                              </CardTitle>
+                              {world.genre && (
+                                <CardDescription className="text-purple-300">
+                                  {world.genre}
+                                </CardDescription>
+                              )}
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-purple-200 text-sm">{world.description}</p>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
     </div>
   );
-};
-
-export default Index;
+}
